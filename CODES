@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSL 訊號與動態引擎模擬器</title>
+    <style>
+        :root {
+            --bg-color: #0a0f1d;
+            --panel-bg: #141b2d;
+            --accent-blue: #00f0ff;
+            --accent-green: #00ff87;
+            --accent-pink: #ff007f;
+            --text-color: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid #232e48;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            width: 100%;
+            background: #05070c;
+            border-radius: 4px;
+            border: 1px solid #1f293d;
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .dsl-block {
+            background: #090d16;
+            padding: 12px;
+            border-left: 3px solid var(--accent-blue);
+            font-size: 11px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            color: #8ab4f8;
+        }
+
+        .dsl-block.v2 { border-left-color: var(--accent-pink); }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #1f293d;
+            font-size: 14px;
+        }
+
+        .metric span:last-child {
+            font-weight: bold;
+            color: var(--accent-green);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(0, 255, 135, 0.1);
+            color: var(--accent-green);
+            font-size: 12px;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            background: #1f293d;
+            accent-color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>DSL QUANTUM & BIOMETRIC SIMULATOR</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h3 style="color: var(--accent-blue); margin-top:0;">📡 實時矩陣與波形渲染器 (Canvas)</h3>
+            <canvas id="simCanvas" width="800" height="500"></canvas>
+            
+            <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="slider-group">
+                    <label>5G Quartz 脈衝頻率 (Hertz): <span id="hzVal">60</span>Hz</label>
+                    <input type="range" id="hzSlider" min="10" max="120" value="60">
+                </div>
+                <div class="slider-group">
+                    <label>鋸齒亂流強度 (Turbulence): <span id="turbVal">0.5</span></label>
+                    <input type="range" id="turbSlider" min="0" max="2" step="0.1" value="0.5">
+                </div>
+            </div>
+        </div>
+
+        <div class="panel control-panel">
+            <h3 style="color: var(--accent-green); margin-top:0;">📊 核心狀態與核心追蹤</h3>
+            
+            <div class="metric">
+                <span>系統狀態</span>
+                <span class="status-badge">RUNNING_HYBRID_HASH</span>
+            </div>
+            <div class="metric">
+                <span>Omega Velocity Cube</span>
+                <span id="omegaVal">0.00</span>
+            </div>
+            <div class="metric">
+                <span>瞳孔追蹤 ID (Pupil ID)</span>
+                <span id="pupilId">#PPL-9X2_TRACED</span>
+            </div>
+            <div class="metric">
+                <span>分配權重 (Assigned Weight)</span>
+                <span id="weightVal" style="color: var(--accent-pink);">0.00</span>
+            </div>
+            <div class="metric">
+                <span>Bubble Sort 週期</span>
+                <span id="sortStep">0</span>
+            </div>
+
+            <h4 style="color: var(--accent-blue); margin-bottom:5px;">Code Segment 1 (光學與 5G 引擎)</h4>
+            <div class="dsl-block">
+bubble_sort(hybrid_code_hashed(outleafed_mirror_recorded_engine_linear_type[daily_cycle(arrow_scanned.pin_trace_determined()_hertz_pulse.cached[omega_velocity_cube(5G-tunneled_quartz_event.transformed(...))])]))
+            </div>
+
+            <h4 style="color: var(--accent-pink); margin-bottom:5px;">Code Segment 2 (瞳孔與亂流控制)</h4>
+            <div class="dsl-block v2">
+weight_assigned(zigzagged_turbulance.free_of(cache_zone(finger_event_queue(),union_hertz_least_common_factor(..._tri_slashed(...)))))
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 模擬器全域狀態
+        let state = {
+            tick: 0,
+            particles: [],
+            hertzPulse: 60,
+            turbulence: 0.5,
+            bubbleArray: Array.from({length: 30}, () => Math.random() * 100),
+            sortIdx: 0,
+            omegaVelocity: 0,
+            assignedWeight: 0
+        };
+
+        // 初始化粒子（對應 leafed_distributed_particles_sheet）
+        for(let i=0; i<40; i++) {
+            state.particles.push({
+                x: Math.random() * canvas.width / 2,
+                y: Math.random() * canvas.height,
+                speed: Math.random() * 2 + 1,
+                radius: Math.random() * 3 + 1
+            });
+        }
+
+        // 監聽 UI 控制
+        document.getElementById('hzSlider').addEventListener('input', (e) => {
+            state.hertzPulse = parseInt(e.target.value);
+            document.getElementById('hzVal').innerText = state.hertzPulse;
+        });
+        document.getElementById('turbSlider').addEventListener('input', (e) => {
+            state.turbulence = parseFloat(e.target.value);
+            document.getElementById('turbVal').innerText = state.turbulence;
+        });
+
+        // 模擬 Bubble Sort 步驟
+        function stepBubbleSort() {
+            let arr = state.bubbleArray;
+            if (state.sortIdx < arr.length - 1) {
+                for (let j = 0; j < arr.length - state.sortIdx - 1; j++) {
+                    if (arr[j] > arr[j+1]) {
+                        let temp = arr[j];
+                        arr[j] = arr[j+1];
+                        arr[j+1] = temp;
+                    }
+                }
+                state.sortIdx++;
+            } else {
+                state.sortIdx = 0; // 排序完成後重置，循環模擬
+                state.bubbleArray = Array.from({length: 30}, () => Math.random() * 100);
+            }
+            document.getElementById('sortStep').innerText = state.sortIdx;
+        }
+
+        // 主渲染迴圈
+        function render() {
+            state.tick++;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 計算 DSL 衍生數值
+            state.omegaVelocity = Math.sin(state.tick * 0.02) * 50 + (state.hertzPulse * 0.5);
+            state.assignedWeight = Math.abs(Math.cos(state.tick * 0.05) * state.turbulence * 10).toFixed(4);
+            
+            document.getElementById('omegaVal').innerText = state.omegaVelocity.toFixed(2) + " rad/s";
+            document.getElementById('weightVal').innerText = state.assignedWeight;
+
+            // 1. 繪製左側：光學透鏡與分佈式粒子 (Segment 1)
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+            ctx.lineWidth = 1;
+            // 繪製光學透鏡邊界線 (bar_sign.optic_lens)
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/2, 0);
+            ctx.lineTo(canvas.width/2, canvas.height);
+            ctx.stroke();
+
+            // 更新與繪製粒子 (leafed_distributed_particles_sheet)
+            state.particles.forEach(p => {
+                p.y += Math.sin(state.tick * 0.05 + p.x) * 0.5;
+                p.x += p.speed * (state.hertzPulse / 60);
+                if (p.x > canvas.width / 2) p.x = 0; // 在透鏡前循環
+
+                ctx.fillStyle = `rgba(0, 240, 255, ${0.3 + Math.random()*0.5})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 2. 繪製中央：Bubble Sort 線性引擎視覺化 (linear_type)
+            if(state.tick % 5 === 0) stepBubbleSort();
+            const barWidth = 10;
+            const startX = canvas.width / 2 + 30;
+            state.bubbleArray.forEach((val, index) => {
+                ctx.fillStyle = index === state.sortIdx ? '#00ff87' : '#1f293d';
+                if (index > state.bubbleArray.length - state.sortIdx) ctx.fillStyle = '#8ab4f8';
+                ctx.fillRect(startX + (index * 12), canvas.height - val * 2 - 20, barWidth, val * 2);
+            });
+
+            // 3. 繪製右側/上方：鋸齒亂流與凹型切除 (Segment 2)
+            // (zigzagged_turbulance & concave_undercut)
+            ctx.strokeStyle = '#ff007f';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let x = 0; x < canvas.width; x += 10) {
+                // 產生鋸齒波 (Zigzag) 結合亂流 (Turbulence)
+                let zigzag = (x % 20 === 0) ? 30 : -30;
+                let noise = (Math.random() - 0.5) * 20 * state.turbulence;
+                // 模擬凹型切除 (Concave Undercut) 效果：在特定區間內向下挖空
+                let undercut = (x > 300 && x < 500) ? 50 : 0; 
+                
+                let y = 120 + zigzag + noise + undercut + Math.sin(state.tick*0.1 + x*0.05)*15;
+                if(x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // 4. 繪製 5G 隧道與瞳孔目標提示 UI
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '12px Courier New';
+            ctx.fillText(`[5G TUNNEL]: ACTIVE (${state.hertzPulse}Hz)`, 20, 30);
+            ctx.fillText(`[ZIGZAG TURBULENCE DETECTED]`, 20, 50);
+            
+            // 瞳孔目標鎖定圈 (pupil_targeted_id)
+            ctx.strokeStyle = '#00ff87';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(canvas.width - 100, 80, 25 + Math.sin(state.tick*0.1)*5, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.fillStyle = '#00ff87';
+            ctx.fillRect(canvas.width - 102, 78, 4, 4);
+
+            requestAnimationFrame(render);
+        }
+
+        // 啟動模擬器
+        render();
+    </script>
+</body>
+</html>

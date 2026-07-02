@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧機電類比電路模擬器 (DSL Translater)</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: #131a26;
+            --scope-bg: #050811;
+            --accent-blue: #00f0ff;
+            --accent-green: #39ff14;
+            --accent-amber: #ffaa00;
+            --accent-pink: #ff0055;
+            --text-color: #d1d5db;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1000px) {
+            .grid-container { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid #222f47;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        .scope-container {
+            background: var(--scope-bg);
+            border: 2px solid #1e293b;
+            border-radius: 8px;
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 320px;
+        }
+
+        .scope-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            pointer-events: none;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 13px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .schematic-box {
+            background: #090d16;
+            padding: 12px;
+            border-left: 4px solid var(--accent-blue);
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #94a3b8;
+        }
+        .schematic-box.pink { border-left-color: var(--accent-pink); }
+        .schematic-box.amber { border-left-color: var(--accent-amber); }
+
+        .status-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+        
+        .pump-visualizer {
+            height: 80px;
+            background: #090d16;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+        }
+        
+        .pump-piston {
+            position: absolute;
+            left: 10px;
+            top: 15px;
+            height: 50px;
+            width: 30px;
+            background: #475569;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🧠 智慧機電類比硬體模擬面板 (Mechatronics Circuit Scope)</h1>
+
+    <div class="grid-container">
+        <!-- 左側：電路示波器與實體模擬 -->
+        <div class="panel">
+            <h3 style="margin-top: 0; color: var(--accent-blue);">📉 四軌類比示波器 (Analog Oscilloscope)</h3>
+            
+            <div class="scope-container">
+                <div class="scope-label">CH1: 光電前端訊號 (V_IN) &nbsp;&nbsp; CH2: 凹陷濾波後電壓 (V_FILT)</div>
+                <canvas id="scopeCanvas"></canvas>
+            </div>
+
+            <h3 style="color: var(--accent-amber);">⚙️ 實體執行級：週期壓電泵浦與異質節點</h3>
+            <div class="pump-visualizer" id="pumpZone">
+                <div class="pump-piston" id="piston"></div>
+                <canvas id="nodeCanvas" style="position:absolute; top:0; left:0; width:100%; height:80px; pointer-events:none; background:transparent;"></canvas>
+            </div>
+
+            <div class="controls">
+                <div class="slider-group">
+                    <label>5G 載波調變頻率: <span id="freqVal">50</span> Hz</label>
+                    <input type="range" id="freqSlider" min="10" max="200" value="50">
+                </div>
+                <div class="slider-group">
+                    <label>鋸齒環境亂流電壓: <span id="noiseVal">1.5</span> V</label>
+                    <input type="range" id="noiseSlider" min="0" max="5" step="0.1" value="1.5">
+                </div>
+                <div class="slider-group">
+                    <label>壓電泵浦驅動增益: <span id="gainVal">1.0</span>x</label>
+                    <input type="range" id="gainSlider" min="0.1" max="3" step="0.1" value="1.0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側：DSL 到類比電路映射說明 -->
+        <div class="sidebar">
+            <div class="panel">
+                <h3 style="margin-top: 0; display:flex; justify-content:space-between; align-items:center;">
+                    <span>⚡ 系統狀態</span>
+                    <span class="status-light"></span>
+                </h3>
+                <div style="font-size:14px; line-height: 1.6;">
+                    <div>系統總阻抗: <span style="color:var(--accent-green)">50 Ω</span></div>
+                    <div>共模抑制比 (CMRR): <span style="color:var(--accent-blue)">>94 dB</span></div>
+                    <div>節點釋放電壓: <span id="releaseV" style="color:var(--accent-pink)">0.00 V</span></div>
+                </div>
+            </div>
+
+            <div class="panel" style="flex-grow: 1;">
+                <h3 style="margin-top: 0; color: var(--accent-blue); font-size:16px;">🔍 DSL 硬體電路解譯</h3>
+                
+                <p style="font-size:12px; margin-bottom:5px;"><strong>[DSL 1] 類比前端與雜湊降噪</strong></p>
+                <div class="schematic-box">
+                    // 鏡像記錄線性引擎 ➔ 類比 R-2R DAC 梯形網路<br>
+                    // Bubble Sort ➔ 類比全通等化器自動鎖相<br>
+                    <strong>電路映射：</strong> 光電晶體放大器 + 5G LC 諧振阻抗匹配網路。
+                </div>
+
+                <p style="font-size:12px; margin-bottom:5px; margin-top:15px;"><strong>[DSL 2] 亂流補償與凹型切除</strong></p>
+                <div class="schematic-box pink">
+                    // concave_undercut ➔ 主動式雙 T 型凹陷濾波器<br>
+                    // weight_assigned ➔ 反相運算放大器可變增益迴路<br>
+                    <strong>電路映射：</strong> Op-Amp 差動電路，專門砍掉特定頻率的鋸齒漣波（Ripple）。
+                </div>
+
+                <p style="font-size:12px; margin-bottom:5px; margin-top:15px;"><strong>[DSL 3] 泵浦驅動與異質節點釋放</strong></p>
+                <div class="schematic-box amber">
+                    // cycle_pump ➔ 壓電式微流體泵浦驅動電路<br>
+                    // hetero_joint_points.released() ➔ FET 閘極電容放電開關陣列<br>
+                    <strong>電路映射：</strong> 達靈頓功率電晶體級 + 多路複用類比開關（MUX）。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('scopeCanvas');
+        const ctx = canvas.getContext('2d');
+        const nodeCanvas = document.getElementById('nodeCanvas');
+        const nctx = nodeCanvas.getContext('2d');
+
+        // 機電模擬參數
+        let config = {
+            carrierFreq: 50,
+            noiseVolts: 1.5,
+            pumpGain: 1.0,
+            time: 0,
+            history: []
+        };
+
+        // 綁定滑桿
+        document.getElementById('freqSlider').addEventListener('input', (e) => {
+            config.carrierFreq = parseInt(e.target.value);
+            document.getElementById('freqVal').innerText = config.carrierFreq;
+        });
+        document.getElementById('noiseSlider').addEventListener('input', (e) => {
+            config.noiseVolts = parseFloat(e.target.value);
+            document.getElementById('noiseVal').innerText = config.noiseVolts;
+        });
+        document.getElementById('gainSlider').addEventListener('input', (e) => {
+            config.pumpGain = parseFloat(e.target.value);
+            document.getElementById('gainVal').innerText = config.pumpGain;
+        });
+
+        // 調整畫布解晰度
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 320;
+            nodeCanvas.width = nodeCanvas.parentElement.clientWidth;
+            nodeCanvas.height = 80;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 核心機電類比計算迴圈
+        function updatePhysics() {
+            config.time += 0.05;
+            
+            // 1. AFE 輸入訊號 (基頻光電訊號 + 5G 調變)
+            let v_photo = Math.sin(config.time * 0.5) * 1.5; 
+            let v_5g_carrier = Math.sin(config.time * config.carrierFreq * 0.2) * 0.5;
+            let v_in = v_photo + v_5g_carrier;
+
+            // 2. 注入環境鋸齒亂流 (Turbulence)
+            let zigzag = (Math.floor(config.time * 2) % 2 === 0 ? 1 : -1) * (config.noiseVolts * 0.5);
+            let raw_signal = v_in + zigzag;
+
+            // 3. Op-Amp 凹陷濾波與主動補償 (Concave Undercut 等效處理)
+            // 濾波器試圖消減強烈的鋸齒漣波
+            let v_filt = v_photo * 1.2 + (v_5g_carrier * 0.1); 
+
+            // 4. 驅動泵浦 (Cycle Pump 實體運動量計算)
+            let pump_stroke = Math.sin(config.time * 3) * 15 * config.pumpGain;
+            
+            // 5. 終端電容異質節點釋放電壓
+            let release_v = Math.abs(Math.cos(config.time * 0.8) * 5 * config.pumpGain);
+            document.getElementById('releaseV').innerText = release_v.toFixed(2) + " V";
+
+            // 儲存波形歷史紀錄以供示波器繪製
+            config.history.push({ raw: raw_signal, filt: v_filt });
+            if (config.history.length > canvas.width) {
+                config.history.shift();
+            }
+
+            return { pump_stroke, release_v };
+        }
+
+        // 渲染畫面
+        function draw() {
+            const { pump_stroke, release_v } = updatePhysics();
+
+            // --- 繪製示波器 ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 繪製電子網格 (Grid)
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 1;
+            for(let x=0; x<canvas.width; x+=40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y=0; y<canvas.height; y+=40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            // 中央基準線
+            ctx.strokeStyle = '#1e293b';
+            ctx.beginPath(); ctx.moveTo(0, canvas.height/2); ctx.lineTo(canvas.width, canvas.height/2); ctx.stroke();
+
+            // 繪製波形
+            if (config.history.length > 1) {
+                // CH1: 原始亂流訊號 (綠線)
+                ctx.strokeStyle = 'rgba(57, 255, 20, 0.7)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for(let i=0; i<config.history.length; i++) {
+                    let x = i;
+                    let y = canvas.height/2 - (config.history[i].raw * 35);
+                    if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // CH2: 主動增益補償/濾波後訊號 (藍線 - 對應凹型切除後的平滑訊號)
+                ctx.strokeStyle = 'var(--accent-blue)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for(let i=0; i<config.history.length; i++) {
+                    let x = i;
+                    let y = canvas.height/2 - (config.history[i].filt * 35);
+                    if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+
+            // --- 繪製實體泵浦與花狀釋放節點 ---
+            const piston = document.getElementById('piston');
+            // 改變壓電泵浦活塞位置
+            piston.style.transform = `translateX(${20 + pump_stroke}px)`;
+
+            nctx.clearRect(0, 0, nodeCanvas.width, nodeCanvas.height);
+            // 繪製異質接點 (Hetero Joint Points) 能量釋放火花
+            let startX = 150;
+            nctx.fillStyle = '#475569';
+            nctx.font = '10px monospace';
+            nctx.fillText("🎚️ 類比開關 MUX 級", startX, 25);
+
+            for(let i=0; i<5; i++) {
+                let nx = startX + 50 + (i * 45);
+                let ny = 45;
+                
+                // 節點連線
+                nctx.strokeStyle = '#1e293b';
+                nctx.beginPath(); nctx.moveTo(100, 45); nctx.lineTo(nx, ny); nctx.stroke();
+
+                // 點亮釋放中的節點 (released)
+                let pulseSpark = Math.sin(config.time * 2 + i) * release_v;
+                if(pulseSpark > 2) {
+                    nctx.fillStyle = 'var(--accent-pink)';
+                    nctx.shadowColor = 'var(--accent-pink)';
+                    nctx.shadowBlur = 10;
+                } else {
+                    nctx.fillStyle = '#1e293b';
+                    nctx.shadowBlur = 0;
+                }
+                nctx.beginPath();
+                nctx.arc(nx, ny, 6, 0, Math.PI*2);
+                nctx.fill();
+                nctx.shadowBlur = 0; // 重置
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // 啟動類比模擬
+        draw();
+    </script>
+</body>
+</html>

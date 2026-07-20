@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wafer-Scale Engine (WSE) Defect Isolation & Routing Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #030712;
+            --card-bg: #0b132b;
+            --border-color: rgba(56, 189, 248, 0.2);
+            --accent-cyan: #38bdf8;
+            --accent-purple: #c084fc;
+            --accent-red: #f43f5e;
+            --accent-green: #4ade80;
+            --text-main: #f8fafc;
+            --text-sub: #64748b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 1000px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+
+        .full-width { grid-column: 1 / -1; }
+
+        h2 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dsl-code {
+            font-family: "Fira Code", monospace;
+            background: #020617;
+            border: 1px solid rgba(192, 132, 252, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #e9d5ff;
+            overflow-x: auto;
+            white-space: nowrap;
+            margin-bottom: 12px;
+        }
+
+        .wafer-stage {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: #020617;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .wafer-disc {
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-cyan);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 3px;
+            padding: 20px;
+            box-sizing: border-box;
+            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            overflow: hidden;
+        }
+
+        .chiplet-core {
+            background: #1e293b;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .chiplet-core.active {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 6px var(--accent-cyan);
+        }
+
+        .chiplet-core.defect {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+
+        .chiplet-core.routed {
+            background: var(--accent-purple);
+            box-shadow: 0 0 8px var(--accent-purple);
+        }
+
+        .chiplet-core.disabled {
+            visibility: hidden;
+        }
+
+        .telemetry-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.9rem;
+        }
+
+        .telemetry-value {
+            font-family: monospace;
+            font-weight: bold;
+            color: #f1f5f9;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent-cyan);
+            color: #020617;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button.purple {
+            background: var(--accent-purple);
+            color: #ffffff;
+        }
+
+        button.gray {
+            background: #334155;
+            color: #ffffff;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .badge-green { background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }
+        .badge-red { background: rgba(244, 63, 94, 0.2); color: var(--accent-red); }
+        .badge-purple { background: rgba(192, 132, 252, 0.2); color: var(--accent-purple); }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+
+    <div class="card full-width">
+        <h2>
+            <span>🌐 Wafer-Scale Engine (WSE) 晶圓級自癒拓撲監控面板</span>
+            <span id="system-status" class="badge badge-green">SYSTEM YIELD: 100% OPERATIONAL</span>
+        </h2>
+        <div class="dsl-code">
+            injected_reused(api_octo_plate[sheet_neuron_address_topology.deflected_double_triple(adjacent_saturated{slashed_star_ranged_fill.adversed_router_tube.6-spanned_whirled_set()_orthogonal_mirror[cost_resilience_pin_tuned(), router_gadget.dejected_channel()]})])
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>12" Wafer Chiplet Topology (10x10 Grid)</h2>
+        <div class="wafer-stage">
+            <div class="wafer-disc" id="wafer-grid"></div>
+        </div>
+    </div>
+
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <h2>DSL 引擎即時遙測 (Telemetry)</h2>
+            
+            <div class="telemetry-item">
+                <span>晶圓製造實體瑕疵 (Defect Cores)</span>
+                <span id="defect-count" class="telemetry-value" style="color: var(--accent-green);">0 Cores</span>
+            </div>
+
+            <div class="telemetry-item">
+                <span>故障隔離狀態 (adversed_router_tube)</span>
+                <span id="isolation-status" class="telemetry-value">NO DEFECTS DETECTED</span>
+            </div>
+
+            <div class="telemetry-item">
+                <span>動態路由代價 (cost_resilience_pin_tuned)</span>
+                <span id="cost-pin" class="telemetry-value">0.12 ms (Baseline)</span>
+            </div>
+
+            <div class="telemetry-item">
+                <span>算子矩陣可用率 (Effective Yield)</span>
+                <span id="effective-yield" class="telemetry-value" style="color: var(--accent-green);">100.0%</span>
+            </div>
+
+            <div class="telemetry-item">
+                <span>偏轉備援通道 (deflected_double_triple)</span>
+                <span id="route-mode" class="telemetry-value">DIRECT MESH</span>
+            </div>
+        </div>
+
+        <div>
+            <div class="btn-group">
+                <button onclick="simulateManufactureDefects()" style="background: var(--accent-red); color: white;">
+                    ⚠️ 標記晶圓製造瑕疵
+                </button>
+                <button class="purple" onclick="applyDSLDefectIsolation()">
+                    ⚡ 執行 DSL 瑕疵隔離與重構
+                </button>
+            </div>
+            <div class="btn-group">
+                <button class="gray" onclick="initWafer()">
+                    🔄 重置晶圓狀態 (Reset)
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const gridSize = 10;
+    const totalCores = gridSize * gridSize;
+    const waferGrid = document.getElementById('wafer-grid');
+    
+    // 預設標準傳輸路徑 (對角線與中心主幹)
+    const primaryPath = [0, 11, 22, 33, 44, 45, 46, 57, 68, 79, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99];
+    let defectCores = [];
+
+    // 初始化/重置晶圓網格
+    function initWafer() {
+        waferGrid.innerHTML = '';
+        defectCores = [];
+        
+        for (let i = 0; i < totalCores; i++) {
+            const row = Math.floor(i / gridSize);
+            const col = i % gridSize;
+            const core = document.createElement('div');
+            core.className = 'chiplet-core';
+            core.id = `core-${i}`;
+
+            // 計算圓形邊界，切掉非晶圓區域
+            const distFromCenter = Math.sqrt(Math.pow(row - 4.5, 2) + Math.pow(col - 4.5, 2));
+            if (distFromCenter > 4.8) {
+                core.classList.add('disabled');
+            } else if (primaryPath.includes(i)) {
+                core.classList.add('active');
+            }
+
+            waferGrid.appendChild(core);
+        }
+
+        // 重置 UI 狀態
+        document.getElementById('system-status').className = 'badge badge-green';
+        document.getElementById('system-status').innerText = 'SYSTEM YIELD: 100% OPERATIONAL';
+        document.getElementById('defect-count').innerText = '0 Cores';
+        document.getElementById('defect-count').style.color = 'var(--accent-green)';
+        document.getElementById('isolation-status').innerText = 'NO DEFECTS DETECTED';
+        document.getElementById('isolation-status').style.color = 'var(--text-main)';
+        document.getElementById('cost-pin').innerText = '0.12 ms (Baseline)';
+        document.getElementById('cost-pin').style.color = 'var(--text-main)';
+        document.getElementById('effective-yield').innerText = '100.0%';
+        document.getElementById('effective-yield').style.color = 'var(--accent-green)';
+        document.getElementById('route-mode').innerText = 'DIRECT MESH';
+        document.getElementById('route-mode').style.color = 'var(--text-main)';
+    }
+
+    // 模擬晶圓出廠檢測發現缺陷 (Inject Defects)
+    function simulateManufactureDefects() {
+        defectCores = [33, 44, 45]; // 注入 3 個瑕疵點
+        
+        defectCores.forEach(id => {
+            const el = document.getElementById(`core-${id}`);
+            if (el) {
+                el.className = 'chiplet-core defect';
+            }
+        });
+
+        document.getElementById('system-status').className = 'badge badge-red';
+        document.getElementById('system-status').innerText = 'WARNING: PHYSICAL DEFECTS DETECTED';
+
+        document.getElementById('defect-count').innerText = `${defectCores.length} Cores (Physical Bad)`;
+        document.getElementById('defect-count').style.color = 'var(--accent-red)';
+        
+        document.getElementById('isolation-status').innerText = 'BLOCKED (adversed_router_tube)';
+        document.getElementById('isolation-status').style.color = 'var(--accent-red)';
+
+        document.getElementById('cost-pin').innerText = 'INF (Infinite - Tube Broken)';
+        document.getElementById('cost-pin').style.color = 'var(--accent-red)';
+
+        document.getElementById('effective-yield').innerText = '82.5% (Degraded)';
+        document.getElementById('effective-yield').style.color = 'var(--accent-red)';
+    }
+
+    // 執行 DSL 瑕疵隔離與動態路由調校
+    function applyDSLDefectIsolation() {
+        if (defectCores.length === 0) return;
+
+        // 繞過 33, 44, 45 的偏轉重構路徑
+        const reroutedPath = [23, 24, 25, 36, 47, 56, 67];
+
+        reroutedPath.forEach(id => {
+            const el = document.getElementById(`core-${id}`);
+            if (el && !el.classList.contains('defect')) {
+                el.className = 'chiplet-core routed';
+            }
+        });
+
+        document.getElementById('system-status').className = 'badge badge-purple';
+        document.getElementById('system-status').innerText = 'YIELD: 100% RECOVERED (DSL REROUTED)';
+
+        document.getElementById('isolation-status').innerText = 'ISOLATED (router_gadget.dejected_channel)';
+        document.getElementById('isolation-status').style.color = 'var(--accent-purple)';
+
+        document.getElementById('cost-pin').innerText = '0.38 ms (cost_resilience_pin_tuned)';
+        document.getElementById('cost-pin').style.color = 'var(--accent-purple)';
+
+        document.getElementById('effective-yield').innerText = '100.0% (Logical Equivalent)';
+        document.getElementById('effective-yield').style.color = 'var(--accent-green)';
+
+        document.getElementById('route-mode').innerText = 'DEFLECTED DOUBLE/TRIPLE (Bypassed)';
+        document.getElementById('route-mode').style.color = 'var(--accent-purple)';
+    }
+
+    // 頁面載入時初始化
+    initWafer();
+</script>
+
+</body>
+</html>
